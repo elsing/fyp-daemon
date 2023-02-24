@@ -1,0 +1,4 @@
+rel
+websocket-client
+asyncio
+numpy

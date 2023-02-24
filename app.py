@@ -1,17 +1,28 @@
-
-
-import schedule
 import rel
 import time
 import _thread
 import websocket
 import asyncio
+import json
 from time import sleep
+import numpy as np
 api_key = "3867cb4d-48c1-4a5d-a395-fec3ac24a588"
 
 
 def on_message(ws, message):
-    print("Recieved --> ", message)
+    print("DEBUG: Recieved -->", message)
+    try:
+        message = json.loads(message)
+        if message[0] == "welcome":
+            print(message[1])
+        elif message[0] == "streams":
+            for stream in message[1]:
+                print("Stream: {} with details {}".format(
+                    stream["name"], stream))
+        else:
+            print("Unkonwn command: {}".format(message[0]))
+    except Exception as e:
+        print("Error:", e)
 
 
 def on_error(ws, error):
@@ -29,20 +40,9 @@ def on_open(ws):
     print("Opened connection")
 
 
-def theSchedule(ws):
-    schedule.every(2).seconds.do(ws.send, "ping")
-    schedule.every(30).seconds.do(ws.send, "getFlow")
-    try:
-        while True:
-            schedule.run_pending()
-            time.sleep(1)
-    except Exception as e:
-        print(e)
-
-
 if __name__ == "__main__":
     # websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("ws://localhost:8000/websocket",
+    ws = websocket.WebSocketApp("wss://api.singer.systems/websocket",
                                 # Add custom headers here
                                 header={
                                     "api_key": api_key},
