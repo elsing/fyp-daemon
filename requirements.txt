@@ -2,3 +2,5 @@ rel
 websocket-client
 asyncio
 numpy
+gevent
+eventlet

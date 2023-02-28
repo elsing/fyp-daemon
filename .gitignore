@@ -130,3 +130,4 @@ dmypy.json
 
 # Old code
 .testing/
+api_key.txt
