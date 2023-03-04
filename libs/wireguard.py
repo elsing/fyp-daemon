@@ -1,5 +1,6 @@
 import subprocess
 import logging
+import os
 
 
 def setOnBoot(status, streamName):
@@ -8,8 +9,11 @@ def setOnBoot(status, streamName):
 
 
 def deleteConfig(streamName):
-    logging.debug(subprocess.run(["rm", "-f", "/etc/wireguard/{}.conf".format(
-        streamName)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.decode("utf-8"))
+    try:
+        os.remove("/etc/wireguard/{}.conf".format(streamName))
+    except Exception as error:
+        logging.error("Failed to remove old file: {}".format(error))
+        raise error
 
 
 def cleanUp(streamName):
@@ -21,12 +25,12 @@ def wireguardControl(status, stream):
     result = subprocess.run(
         ["wg-quick", status, "/etc/wireguard/{}.conf".format(stream["name"])], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    logging.debug("Wireguard CMD code: {} result: {}".format(
+    logging.debug("Wireguard CMD code: {} result: \n{}".format(
         result.returncode, result.stdout.decode("utf-8")))
     if result.returncode == 0:
         try:
             if status == "up":
-                setOnBoot("enabled", stream["name"])
+                setOnBoot("enable", stream["name"])
                 logging.info(
                     "Deployed stream '{}' successfully".format(stream["name"]))
                 return "", "up"
@@ -34,15 +38,16 @@ def wireguardControl(status, stream):
                 cleanUp(stream["name"])
                 logging.info(
                     "Downed stream '{}' successfully".format(stream["name"]))
-                return ""  # No status to return
+                return "", "down"  # No status to return
         except Exception as error:
+            logging.error("Error during attempted removal: \n{}".format(error))
             raise error
     else:
         # Handle status error
         logging.error(
             "Failed to bring stream '{}' {}".format(stream["name"], status))
-        logging.debug("Change failed: {}".format(
-            result.stdout.decode("utf-8")))
         # Return error and status
         error = result.stdout.decode("utf-8")
+        if status == "down":
+            return error, "pendingDelete"
         return error, "error"

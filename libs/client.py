@@ -1,49 +1,10 @@
 import logging as logger
 import rel
-import time
-import _thread
 import websocket
-import asyncio
 import json
 from time import sleep
 from .logger import setup_logger
-from .manageStream import deployStream, removeStream
-import numpy as np
-import subprocess
-
-
-def updateField(ws, stream_id, field, value):
-    try:
-        ws.send(json.dumps(
-            {"cmd": "patch", "id": stream_id, "field": field, "value": value}))
-    except Exception as error:
-        raise error
-
-    # return result
-    # while True:
-    #     time.sleep(5)
-    #     print("Checking Wireguard connections")
-    #     result = subprocess.run(
-    #         ["wg", "show"], stdout=subprocess.PIPE).stdout.decode('utf-8')
-    #     print(result)
-    #     for line in result.splitlines():
-    #         if "interface" in line:
-    #             interface = line.split(":")[1].strip()
-    #             print("Interface: {}".format(interface))
-    #         elif "peer" in line:
-    #             peer = line.split(":")[1].strip()
-    #             print("Peer: {}".format(peer))
-    #         elif "latest handshake" in line:
-    #             handshake = line.split(":")[1].strip()
-    #             print("Handshake: {}".format(handshake))
-    #             if handshake == "never":
-    #                 print("Handshake never, restarting Wireguard")
-    #                 result = subprocess.run(
-    #                     ["wg-quick", "down", interface], stdout=subprocess.PIPE).stdout.decode('utf-8')
-    #                 print(result)
-    #                 result = subprocess.run(
-    #                     ["wg-quick", "up", interface], stdout=subprocess.PIPE).stdout.decode('utf-8')
-    #                 print(result)
+from .manageStream import deployStream, removeStream, downStream
 
 
 def on_message(ws, message):
@@ -58,29 +19,30 @@ def on_message(ws, message):
             # stream["name"], stream))
             try:
                 if stream["status"] == "init" or stream["status"] == "pendingUpdate":
-                    # Write WG config to host
-                    error, value = deployStream(stream)
-                    print("test")
-                    updateField(ws, stream["stream_id"], "error", error)
-                    updateField(ws, stream["stream_id"], "status", value)
-
+                    # Deploy stream
+                    logger.info("Attempting to deploy Stream '{}'".format(
+                        stream["name"]))
+                    deployStream(ws, stream)
                 elif stream["status"] == "pendingDelete":
-                    logger.critical(stream)
-                    error = removeStream(ws, stream)
-                    if error == "":
-                        updateField(ws, stream["stream_id"], "error", error)
-                        updateField(ws, stream["stream_id"], "status", value)
-                    else:
-                        print("trigger")
-                        print(error)
-                        raise error
+                    # Remove stream
+                    logger.info("Attempting to remove Stream '{}'".format(
+                        stream["name"]))
+                    removeStream(ws, stream)
+                elif stream["status"] == "pendingDown":
+                    # Down stream
+                    logger.info("Attempting to down Stream '{}'".format(
+                        stream["name"]))
+                    downStream(ws, stream)
                 else:
                     logger.debug("No changes to Stream '{}'".format(
                         stream["name"]))
             except Exception as error:
-                logger.CRITICAL("Failed to iteratite: ", error)
+                logger.critical("Failed to change Stream")
+                logger.debug("Error: \n{}".format(error))
                 # raise error
-            # Send updates to DB
+    elif message[0] == "confirm":
+        logger.debug("Confirming with API")
+        ws.send(json.dumps({"cmd": "confirm"}))
     else:
         logger.warning("Unknown command: {}".format(message[0]))
 
@@ -96,7 +58,8 @@ def on_close(ws, close_status_code, close_msg):
 
 
 def on_open(ws):
-    logger.info("Websocket connected")
+    pass
+    # logger.info("Websocket connected")
 
 
 def start(api_key):

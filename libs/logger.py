@@ -9,7 +9,7 @@ def setup_logger(fileName, instance="root", level=logging.INFO):
     format = logging.Formatter("[%(asctime)s]-%(levelname)s--> %(message)s")
 
     # Handle file logging
-    fileLog = logging.FileHandler(logFile)
+    fileLog = logging.FileHandler(logFile, mode="w")
     fileLog.setFormatter(format)
     fileLog.setLevel(level)
 
