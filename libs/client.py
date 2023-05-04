@@ -62,9 +62,9 @@ def on_open(ws):
     # logger.info("Websocket connected")
 
 
-def start(api_key):
+def start(api_key, api_url):
     # ws_addr = "wss://api.singer.systems/websocket"
-    ws_addr = "wss://api.singer.systems/websocket"
+    ws_addr = "wss://"+api_url+"/websocket"
     ws = websocket.WebSocketApp(ws_addr,
                                 # Add custom headers here
                                 header={
